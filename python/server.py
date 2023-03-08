@@ -43,6 +43,7 @@ from flask import Flask
 from flask import render_template
 from flask import request
 from flask import jsonify
+from flask import url_for
 from datetime import datetime
 from datetime import timedelta
 import plaid
@@ -303,8 +304,21 @@ def get_transactions():
 
         # Return the 8 most recent transactions
         latest_transactions = sorted(added, key=lambda t: t['date'])[-8:]
+
+        filename = f"transactions_{access_token}_{time.time()}.json"
+        filepath = os.path.join(app.config['UPLOAD_FOLDER', filename])
+        
+        with open(filepath, 'w') as f:
+            json.dump(latest_transactions, f)
+
         return jsonify({
-            'latest_transactions': latest_transactions})
+            'latest_transactions' : latest_transactions,
+            'file_url' : url_for('download_file', filename=filename)
+        })
+    
+        #return jsonify({
+        #    'latest_transactions': latest_transactions})
+        #return latest_transactions
 
     except plaid.ApiException as e:
         error_response = format_error(e)
@@ -613,3 +627,4 @@ def authorize_and_create_transfer(access_token):
 
 if __name__ == '__main__':
     app.run(port=os.getenv('PORT', 8000))
+    

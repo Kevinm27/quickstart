@@ -23,6 +23,7 @@ const Endpoint = (props: Props) => {
   const [pdf, setPdf] = useState<string | null>(null);
   const [error, setError] = useState<ErrorDataItem | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isGettingTransactions, setIsGettingTransactions] = useState(false);
 
   const getData = async () => {
     setIsLoading(true);
@@ -41,6 +42,24 @@ const Endpoint = (props: Props) => {
     setIsLoading(false);
   };
 
+  const getTransaction = async () => {
+    setIsGettingTransactions(true);
+    const response = await fetch(`/api/transactions/sync`, { method: "POST" });
+    const data = await response.json();
+    if (data.error != null) {
+      setError(data.error);
+      setIsGettingTransactions(false);
+      return;
+    }
+    setPdf(data.pdf);
+    setIsGettingTransactions(false);
+    const downloadLink = document.createElement("a");
+    downloadLink.href = `data:application/pdf;base64,${data.pdf}`;
+    downloadLink.download = "transactions.pdf";
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
+  };
   return (
     <>
       <div className={styles.endpointContainer}>
@@ -67,6 +86,18 @@ const Endpoint = (props: Props) => {
           >
             {isLoading ? "Loading..." : `Send request`}
           </Button>
+          {props.endpoint === 'transactions' && (
+            <Button
+              small
+              centered
+              wide
+              secondary
+              className={styles.sendRequest}
+              onClick={getTransaction}
+            >
+              {isGettingTransactions ? "Loading..." : `Get Transactions`}
+            </Button>
+          )}
           {pdf != null && (
             <Button
               small
@@ -77,22 +108,19 @@ const Endpoint = (props: Props) => {
               componentProps={{ download: "Asset Report.pdf" }}
             >
               Download PDF
-            </Button>
-          )}
-        </div>
+              </Button>
+        )}
       </div>
-      {showTable && (
-        <Table
-          categories={props.categories}
-          data={transformedData}
-          isIdentity={props.endpoint === "identity"}
-        />
-      )}
-      {error != null && <Error error={error} />}
-    </>
-  );
-};
-
-Endpoint.displayName = "Endpoint";
+    </div>
+    {showTable && (
+      <Table
+        categories={props.categories}
+        data={transformedData}
+        isIdentity={props.endpoint === "identity"}
+      />
+    )}
+    {error != null && <Error error={error} />}
+  </>
+)};
 
 export default Endpoint;
