@@ -23,43 +23,41 @@ const Endpoint = (props: Props) => {
   const [pdf, setPdf] = useState<string | null>(null);
   const [error, setError] = useState<ErrorDataItem | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isGettingTransactions, setIsGettingTransactions] = useState(false);
 
-  const getData = async () => {
+  const handleButtonClick = async (type: string) => {
     setIsLoading(true);
-    const response = await fetch(`/api/${props.endpoint}`, { method: "GET" });
+
+    let endpoint = props.endpoint;
+    if (type === "transactions") {
+      endpoint = "transactions/sync";
+    }
+
+    const response = await fetch(`/api/${endpoint}`, { method: "GET" });
     const data = await response.json();
+
     if (data.error != null) {
       setError(data.error);
       setIsLoading(false);
       return;
     }
+
     setTransformedData(props.transformData(data)); // transform data into proper format for each individual product
     if (data.pdf != null) {
       setPdf(data.pdf);
     }
     setShowTable(true);
     setIsLoading(false);
+
+    if (type === "transactions" && data.pdf != null) {
+      const downloadLink = document.createElement("a");
+      downloadLink.href = `data:application/pdf;base64,${data.pdf}`;
+      downloadLink.download = "transactions.pdf";
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+    }
   };
 
-  const getTransaction = async () => {
-    setIsGettingTransactions(true);
-    const response = await fetch(`/api/transactions/sync`, { method: "POST" });
-    const data = await response.json();
-    if (data.error != null) {
-      setError(data.error);
-      setIsGettingTransactions(false);
-      return;
-    }
-    setPdf(data.pdf);
-    setIsGettingTransactions(false);
-    const downloadLink = document.createElement("a");
-    downloadLink.href = `data:application/pdf;base64,${data.pdf}`;
-    downloadLink.download = "transactions.pdf";
-    document.body.appendChild(downloadLink);
-    downloadLink.click();
-    document.body.removeChild(downloadLink);
-  };
   return (
     <>
       <div className={styles.endpointContainer}>
@@ -82,20 +80,20 @@ const Endpoint = (props: Props) => {
             wide
             secondary
             className={styles.sendRequest}
-            onClick={getData}
+            onClick={() => handleButtonClick("request")}
           >
             {isLoading ? "Loading..." : `Send request`}
           </Button>
-          {props.endpoint === 'transactions' && (
+          {props.endpoint === "transactions" && (
             <Button
               small
               centered
               wide
               secondary
               className={styles.sendRequest}
-              onClick={getTransaction}
+              onClick={() => handleButtonClick("transactions")}
             >
-              {isGettingTransactions ? "Loading..." : `Get Transactions`}
+              {isLoading ? "Loading..." : `Get Transactions`}
             </Button>
           )}
           {pdf != null && (
